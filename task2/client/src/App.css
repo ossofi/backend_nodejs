@@ -101,3 +101,68 @@ form button:hover {
   color: #444444;
   margin-bottom: 20px;
 }
+
+.form-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.article-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.article-form input {
+  width: 100%;
+  padding: 8px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.editor {
+  height: 200px;
+  margin-bottom: 20px;
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 40px;
+}
+
+.btn-primary {
+  background-color: #41729c;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.btn-primary:hover {
+  background-color: #70a0cb;
+}
+
+.btn-secondary {
+  background-color: #ccc;
+  color: black;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.btn-secondary:hover {
+  background-color: #aaa;
+}
+
+.error-message {
+  color: rgb(131, 0, 0);
+  margin-bottom: 10px;
+  font-weight: 500;
+}

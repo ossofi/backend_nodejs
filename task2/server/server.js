@@ -30,13 +30,22 @@ app.use((req, _res, next) => {
   next();
 });
 
-// Routes
+// Root route (prevents "Cannot GET /")
+app.get("/", (_req, res) => {
+  res.send("Article API is running. Use /api/articles to fetch data.");
+});
+
+// Get all articles
 app.get("/api/articles", async (_req, res, next) => {
   try {
     const files = fs.readdirSync(DATA_DIR).filter(f => f.endsWith(".json"));
     const articles = files.map(f => {
       const data = JSON.parse(fs.readFileSync(path.join(DATA_DIR, f), "utf-8"));
-      return data;
+      return {
+        id: data.id,
+        title: data.title,
+        createdAt: data.createdAt,
+      };
     });
     res.json({ data: articles });
   } catch (err) {
@@ -44,10 +53,11 @@ app.get("/api/articles", async (_req, res, next) => {
   }
 });
 
-app.get("/api/articles/:id", async (req, res, next) => {
+// Get a single article
+app.get("/api/articles/:id", (req, res, next) => {
   try {
     const file = path.join(DATA_DIR, `${req.params.id}.json`);
-    if (!fs.existsSync(file)) return res.status(404).json({ error: "Not found" });
+    if (!fs.existsSync(file)) return res.status(404).json({ error: "Article not found" });
     const article = JSON.parse(fs.readFileSync(file, "utf-8"));
     res.json({ data: article });
   } catch (err) {
@@ -55,10 +65,12 @@ app.get("/api/articles/:id", async (req, res, next) => {
   }
 });
 
-app.post("/api/articles", async (req, res, next) => {
+// Create a new article
+app.post("/api/articles", (req, res, next) => {
   try {
     const { title, content } = req.body;
-    if (!title || !content) return res.status(400).json({ error: "Title and content required" });
+    if (!title || !content)
+      return res.status(400).json({ error: "Title and content are required" });
 
     const article = {
       id: uuidv4(),
@@ -74,25 +86,59 @@ app.post("/api/articles", async (req, res, next) => {
   }
 });
 
+// Edit existing article
+app.put("/api/articles/:id", (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { title, content } = req.body;
+    const file = path.join(DATA_DIR, `${id}.json`);
+
+    // Validation: article must exist
+    if (!fs.existsSync(file))
+      return res.status(404).json({ error: "Article not found" });
+
+    // Validation: article must include something to update
+    if (!title && !content)
+      return res.status(400).json({ error: "At least one field (title or content) required" });
+
+    const article = JSON.parse(fs.readFileSync(file, "utf-8"));
+    const updated = {
+      ...article,
+      title: title?.trim() || article.title,
+      content: content?.trim() || article.content,
+      updatedAt: new Date().toISOString(),
+    };
+
+    fs.writeFileSync(file, JSON.stringify(updated, null, 2));
+    res.json({ data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Delete existing article
+app.delete("/api/articles/:id", (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const file = path.join(DATA_DIR, `${id}.json`);
+
+    if (!fs.existsSync(file))
+      return res.status(404).json({ error: "Article not found" });
+
+    fs.unlinkSync(file);
+    res.json({ message: `Article ${id} deleted successfully` });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Error handler
 app.use((err, _req, res, _next) => {
-  console.error("💥", err);
+  console.error("error", err);
   res.status(500).json({ error: "Server error" });
 });
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
-
-  // Wait a tick to ensure routes are registered
-  setTimeout(() => {
-    if (app._router?.stack) {
-      const routes = app._router.stack
-        .filter(r => r.route)
-        .map(r => `${Object.keys(r.route.methods)[0].toUpperCase()} ${r.route.path}`);
-      console.log("Registered routes:", routes);
-    } else {
-      console.log("⚠️ No routes found.");
-    }
-  }, 200);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
