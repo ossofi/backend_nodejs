@@ -1,0 +1,17 @@
+{
+  "id": "84ee726e-5eea-4bcd-8bc8-90a7db3af0e4",
+  "title": "attachments test article",
+  "content": "<p>here is the attachment ^</p><p>edit test :3</p>",
+  "createdAt": "2025-11-16T14:49:46.390Z",
+  "attachments": [
+    {
+      "id": "a9cda882-dc77-40ff-9e6d-3f6a6d524666",
+      "originalName": "Ð¡Ð½Ð¸Ð¼Ð¾Ðº ÑÐºÑÐ°Ð½Ð° 2025-01-18 Ð² 18.25.11.png",
+      "filename": "1763304586406-751503878-Ð¡Ð½Ð¸Ð¼Ð¾Ðº ÑÐºÑÐ°Ð½Ð° 2025-01-18 Ð² 18.25.11.png",
+      "mimeType": "image/png",
+      "url": "/uploads/1763304586406-751503878-Ð¡Ð½Ð¸Ð¼Ð¾Ðº ÑÐºÑÐ°Ð½Ð° 2025-01-18 Ð² 18.25.11.png",
+      "createdAt": "2025-11-16T14:49:46.410Z"
+    }
+  ],
+  "updatedAt": "2025-11-16T15:46:51.125Z"
+}

@@ -7,3 +7,8 @@ export const getArticle = (id) => axios.get(`${API_URL}/${id}`);
 export const createArticle = (data) => axios.post(API_URL, data);
 export const updateArticle = (id, data) => axios.put(`${API_URL}/${id}`, data);
 export const deleteArticle = (id) => axios.delete(`${API_URL}/${id}`);
+
+export const uploadAttachments = (id, formData) =>
+  axios.post(`${API_URL}/${id}/attachments`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
