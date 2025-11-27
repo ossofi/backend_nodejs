@@ -1,4 +1,3 @@
-// src/components/ArticleForm.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { createArticle, getArticle, updateArticle, uploadAttachments } from "../api.js";

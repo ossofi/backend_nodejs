@@ -7,6 +7,11 @@ import helmet from "helmet";
 import { createServer } from "http";
 import { Server as IOServer } from "socket.io";
 import multer from "multer";
+import { initDB } from "./db.js";
+
+(async () => {
+  await initDB();
+})();
 
 const app = express();
 const PORT = process.env.PORT || 5050;
