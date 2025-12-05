@@ -1,27 +1,22 @@
-'use strict';
-const { Model } = require('sequelize');
-
-module.exports = (sequelize, DataTypes) => {
-  class Article extends Model {
-    static associate(models) {
-      // future associations
-    }
-  }
-
-  Article.init({
-    title: {
-      type: DataTypes.STRING,
-      allowNull: false
+export default (sequelize, DataTypes) => {
+  const Article = sequelize.define("Article", {
+    id: {
+      type: DataTypes.UUID,
+      primaryKey: true,
+      defaultValue: DataTypes.UUIDV4
     },
-    content: {
-      type: DataTypes.TEXT,
-      allowNull: false
-    }
-  }, {
-    sequelize,
-    modelName: 'Article',
-    timestamps: true
+    title: { type: DataTypes.STRING, allowNull: false },
+    content: { type: DataTypes.TEXT },
+    workspaceId: { type: DataTypes.INTEGER, allowNull: true }
   });
+
+  Article.associate = (models) => {
+    Article.hasMany(models.Comment, {
+      as: "Comments",
+      foreignKey: "articleId",
+      onDelete: "CASCADE",
+    });
+  };  
 
   return Article;
 };

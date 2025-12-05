@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import ArticleList from "./components/ArticleList.jsx";
-import ArticleView from "./components/ArticleView.jsx";
-import ArticleForm from "./components/ArticleForm.jsx";
-import { initNotifications, onNotification } from "./notifications.js";
+import ArticleList from "./components/ArticleList";
+import ArticleView from "./components/ArticleView";
+import ArticleForm from "./components/ArticleForm";
+import { initNotifications, onNotification } from "./notifications";
 import "./App.css";
 
 export default function App() {
@@ -11,15 +11,10 @@ export default function App() {
 
   useEffect(() => {
     initNotifications();
-
     const unsubscribe = onNotification((msg) => {
-      setNotifications((prev) => [msg, ...prev]);
-
-      setTimeout(() => {
-        setNotifications((prev) => prev.filter((n) => n !== msg));
-      }, 4000);
+      setNotifications(prev => [msg, ...prev]);
+      setTimeout(() => setNotifications(prev => prev.filter(n => n !== msg)), 4000);
     });
-
     return () => unsubscribe();
   }, []);
 

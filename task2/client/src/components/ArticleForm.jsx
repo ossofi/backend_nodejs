@@ -1,89 +1,108 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { createArticle, getArticle, updateArticle, uploadAttachments } from "../api.js";
+import { createArticle, getArticle, updateArticle, uploadAttachments } from "../api";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
-import "../App.css";
+import WorkspaceSelector from "./WorkspaceSelector";
+
+const SERVER_URL = "http://localhost:5050";
 
 export default function ArticleForm({ mode = "create" }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const quillRef = useRef(null);
+
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [error, setError] = useState("");
+  const [workspaceId, setWorkspaceId] = useState("");
   const [files, setFiles] = useState([]);
-  const quillRef = useRef(null);
+  const [attachmentsPreview, setAttachmentsPreview] = useState([]); // for immediate preview
+  const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Fetch article for edit mode
   useEffect(() => {
     if (mode === "edit" && id) {
       getArticle(id)
-        .then((res) => {
-          const art = res.data.data;
+        .then((art) => {
           setTitle(art.title || "");
           setContent(art.content || "");
+          setWorkspaceId(art.workspaceId || "");
+          // show existing attachments
+          setAttachmentsPreview(
+            (art.attachments || []).map((a) => ({
+              ...a,
+              previewUrl: `${SERVER_URL}${a.url}`,
+            }))
+          );
         })
-        .catch((err) => console.error(err));
+        .catch(console.error);
     }
   }, [mode, id]);
 
-  const onFilesChange = (e) => {
-    setFiles(Array.from(e.target.files));
+  const handleFilesChange = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    setFiles(selectedFiles);
+
+    // Add preview URLs for image files
+    const newPreviews = selectedFiles.map((f) => ({
+      id: `new-${f.name}-${Date.now()}`,
+      originalName: f.name,
+      mimeType: f.type,
+      previewUrl: URL.createObjectURL(f),
+      isNew: true,
+    }));
+    setAttachmentsPreview((prev) => [...prev, ...newPreviews]);
   };
 
-  const handleAttachUpload = async (articleId) => {
-    if (!files || files.length === 0) return [];
-
-    const allowed = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf"];
-    for (const f of files) {
-      const ext = f.name.slice(((f.name.lastIndexOf(".") - 1) >>> 0) + 2).toLowerCase();
-      if (!allowed.includes("." + ext)) {
-        throw new Error("Invalid file type. Allowed: JPG, PNG, GIF, WEBP, PDF.");
-      }
-    }
-
+  const handleAttachments = async (articleId) => {
+    if (!files.length) return;
     const formData = new FormData();
     files.forEach((f) => formData.append("attachments", f));
-
-    const res = await uploadAttachments(articleId, formData);
-    return res.data.data || [];
+    return uploadAttachments(articleId, formData);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (isSubmitting) return;
     setIsSubmitting(true);
 
-    try {
-      if (!title.trim() || !content.trim()) {
-        setError("Both title and content are required.");
-        setIsSubmitting(false);
-        return;
-      }
+    if (!title.trim() || !content.trim()) {
+      setError("Title and content are required.");
+      setIsSubmitting(false);
+      return;
+    }
+    if (!workspaceId) {
+      setError("Workspace is required.");
+      setIsSubmitting(false);
+      return;
+    }
 
+    try {
       let articleRes;
       if (mode === "create") {
-        articleRes = await createArticle({ title, content });
+        articleRes = await createArticle({ title, content, workspaceId });
       } else {
-        articleRes = await updateArticle(id, { title, content });
+        articleRes = await updateArticle(id, { title, content, workspaceId });
       }
 
-      const articleId = articleRes.data.data.id;
-      try {
-        await handleAttachUpload(articleId);
-      } catch (uploadErr) {
-        console.error("Upload error:", uploadErr);
-        setError(uploadErr.response?.data?.error || uploadErr.message || "Failed to upload attachments.");
-        setIsSubmitting(false);
-        navigate(`/article/${articleId}`);
-        return;
-      }
+      const uploadedAttachments = await handleAttachments(articleRes.id);
 
-      navigate(`/article/${articleId}`);
+      // Refresh article view with all attachments
+      const refreshedArticle = await getArticle(articleRes.id);
+
+      // Update preview list to show uploaded attachments
+      setAttachmentsPreview(
+        (refreshedArticle.attachments || []).map((a) => ({
+          ...a,
+          previewUrl: `${SERVER_URL}${a.url}`,
+        }))
+      );
+
+      navigate(`/article/${articleRes.id}`);
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.error || err.message || "Something went wrong.");
+      setError(err.message || "Something went wrong.");
     } finally {
       setIsSubmitting(false);
     }
@@ -92,42 +111,58 @@ export default function ArticleForm({ mode = "create" }) {
   return (
     <div className="form-container">
       <h2>{mode === "edit" ? "Edit Article" : "New Article"}</h2>
+      {error && <p className="error-message">{error}</p>}
 
-      {error && <div className="error-message">{error}</div>}
-
-      <form onSubmit={handleSubmit} className="article-form">
+      <form onSubmit={handleSubmit}>
         <label>Title:</label>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} required />
+        <input value={title} onChange={(e) => setTitle(e.target.value)} />
 
         <label>Content:</label>
-        <ReactQuill ref={quillRef} value={content} onChange={setContent} className="editor" />
+        <ReactQuill ref={quillRef} value={content} onChange={setContent} />
 
-        <label>Attachments (images or PDF):</label>
+        <label>Attachments:</label>
         <input
           type="file"
-          accept=".jpg,.jpeg,.png,.gif,.webp,.pdf"
           multiple
-          onChange={onFilesChange}
+          accept=".jpg,.jpeg,.png,.gif,.webp,.pdf"
+          onChange={handleFilesChange}
         />
-        {files && files.length > 0 && (
-          <div className="selected-files">
-            <strong>Selected files:</strong>
+
+        {attachmentsPreview.length > 0 && (
+          <div className="attachments-preview">
             <ul>
-              {files.map((f, i) => (
-                <li key={i}>{f.name} ({Math.round(f.size / 1024)} KB)</li>
-              ))}
+              {attachmentsPreview.map((a) => {
+                const isImage = a.mimeType.startsWith("image/");
+                return (
+                  <li key={a.id}>
+                    {isImage ? (
+                      <img
+                        src={a.previewUrl}
+                        alt={a.originalName}
+                        style={{
+                          maxWidth: "200px",
+                          display: "block",
+                          marginBottom: 10,
+                        }}
+                      />
+                    ) : (
+                      <a href={a.previewUrl} target="_blank" rel="noopener noreferrer">
+                        {a.originalName}
+                      </a>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
 
-        <div className="button-group">
-          <button type="submit" className="btn-primary" disabled={isSubmitting}>
-            {isSubmitting ? (mode === "edit" ? "Saving..." : "Creating...") : mode === "edit" ? "Save" : "Create"}
-          </button>
-          <button type="button" onClick={() => navigate("/")} className="btn-secondary" disabled={isSubmitting}>
-            Cancel
-          </button>
-        </div>
+        <label>Workspace:</label>
+        <WorkspaceSelector value={workspaceId} onChange={setWorkspaceId} />
+
+        <button className="btn" type="submit" disabled={isSubmitting}>
+          {mode === "edit" ? "Save" : "Create"}
+        </button>
       </form>
     </div>
   );
