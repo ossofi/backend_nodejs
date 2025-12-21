@@ -326,7 +326,7 @@ form button.btn-secondary:hover {
 
 .comments-section {
   width: 100%;
-  margin-top: 30px;
+  margin-top: 50px;
 }
 
 .comments-section h3 {
@@ -375,6 +375,7 @@ form button.btn-secondary:hover {
   flex-direction: column;
   gap: 10px;
   text-align: left;
+  margin-top: 30px;
 }
 
 /* Comment Cards: horizontal layout */
@@ -465,4 +466,67 @@ form button.btn-secondary:hover {
   padding: 6px 10px;
   border-radius: 6px;
   font-size: 0.85rem;
+}
+
+.versions-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.version-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid #6c3f7e;
+  background-color: #fff; /* light background like cards */
+  color: #6c3f7e;       /* primary accent color */
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.version-btn:hover:not(:disabled) {
+  background-color: #f3e6f7; /* subtle purple hover */
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.version-btn.active {
+  background-color: #6c3f7e; /* primary purple */
+  color: white;
+  border-color: #6c3f7e;
+  cursor: default;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.version-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.back-current-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  background-color: #5e7f9b; /* matches primary color scheme */
+  color: #fff;
+  transition: background-color 0.3s, transform 0.2s;
+  margin-top: 10px;
+}
+
+.back-current-btn:hover {
+  background-color: rgb(138, 177, 211);
+  transform: translateY(-2px);
+}
+
+.back-current-btn:active {
+  transform: scale(0.98);
 }

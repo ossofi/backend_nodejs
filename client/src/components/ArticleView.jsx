@@ -9,6 +9,7 @@ import {
   updateComment,
   deleteComment,
   getWorkspaces,
+  getArticleVersions
 } from "../api";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
@@ -38,9 +39,13 @@ export default function ArticleView() {
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [commentContent, setCommentContent] = useState("");
 
-  // Fetch article + workspaces
+  // Versions
+  const [versions, setVersions] = useState([]);
+  const [viewingVersion, setViewingVersion] = useState(null);
+
+  // Fetch article + workspaces + versions
   useEffect(() => {
-    const fetchArticleAndWorkspaces = async () => {
+    const fetchData = async () => {
       setLoading(true);
       setError(null);
       try {
@@ -52,6 +57,9 @@ export default function ArticleView() {
 
         const wsList = await getWorkspaces();
         setWorkspaces(wsList);
+
+        const versionsList = await getArticleVersions(id);
+        setVersions(versionsList);
       } catch (err) {
         console.error(err);
         setError(err.message || "Failed to load article");
@@ -59,7 +67,7 @@ export default function ArticleView() {
         setLoading(false);
       }
     };
-    fetchArticleAndWorkspaces();
+    fetchData();
   }, [id]);
 
   const handleFilesChange = (e) => setFiles(Array.from(e.target.files));
@@ -80,6 +88,10 @@ export default function ArticleView() {
       setArticle(refreshed);
       setEditMode(false);
       setFiles([]);
+      // Refresh versions after save
+      const versionsList = await getArticleVersions(id);
+      setVersions(versionsList);
+      setViewingVersion(null);
     } catch (err) {
       alert(err.message || "Failed to save changes");
       console.error(err);
@@ -144,6 +156,10 @@ export default function ArticleView() {
   if (error) return <p style={{ color: "red" }}>{error}</p>;
   if (!article) return <p>Article not found</p>;
 
+  // Use either current article or viewingVersion
+  const displayTitle = viewingVersion ? viewingVersion.title : title;
+  const displayContent = viewingVersion ? viewingVersion.content : content;
+
   // Find workspace name by ID
   const workspaceName = workspaces.find((w) => w.id === article.workspaceId)?.name || "Unknown";
 
@@ -155,7 +171,7 @@ export default function ArticleView() {
 
       {/* Workspace */}
       <div style={{ marginBottom: 20 }}>
-        {editMode ? (
+        {editMode && !viewingVersion ? (
           <>
             <label>Workspace:</label>
             <WorkspaceSelector value={workspaceId} onChange={setWorkspaceId} />
@@ -167,7 +183,33 @@ export default function ArticleView() {
         )}
       </div>
 
-      {editMode ? (
+      {/* Versions Panel */}
+      {versions.length > 0 && (
+        <div>
+          <h3>Previous Versions</h3>
+          <ul className="versions-list">
+            {versions.map((v) => (
+              <li key={v.id}>
+                <button
+                  className={`version-btn ${viewingVersion?.id === v.id ? "active" : ""}`}
+                  onClick={() => setViewingVersion(v)}
+                  disabled={viewingVersion?.id === v.id}
+                >
+                  Version {v.versionNumber} - {new Date(v.createdAt).toLocaleString()}
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {viewingVersion && (
+            <button onClick={() => setViewingVersion(null)} className="back-current-btn">
+              Back to current version
+            </button>
+          )}
+        </div>
+      )}
+
+      {editMode && !viewingVersion ? (
         <div>
           <input
             value={title}
@@ -202,8 +244,8 @@ export default function ArticleView() {
         </div>
       ) : (
         <div>
-          <h2>{article.title}</h2>
-          <div dangerouslySetInnerHTML={{ __html: article.content }} />
+          <h2>{displayTitle}</h2>
+          <div dangerouslySetInnerHTML={{ __html: displayContent }} />
 
           {article.attachments?.length > 0 && (
             <div style={{ marginTop: 20 }}>
@@ -218,11 +260,7 @@ export default function ArticleView() {
                         <img
                           src={fileUrl}
                           alt={a.originalName}
-                          style={{
-                            maxWidth: "300px",
-                            display: "block",
-                            marginBottom: 10,
-                          }}
+                          style={{ maxWidth: "300px", display: "block", marginBottom: 10 }}
                         />
                       ) : (
                         <a href={fileUrl} target="_blank" rel="noopener noreferrer">
@@ -236,78 +274,80 @@ export default function ArticleView() {
             </div>
           )}
 
-          <div style={{ marginTop: 20 }}>
-            <button className="btn" onClick={() => setEditMode(true)}>
-              Edit
-            </button>
-            <button
-              className="btn"
-              onClick={handleDelete}
-              style={{ marginLeft: 10 }}
-            >
-              Delete
-            </button>
-          </div>
+          {!viewingVersion && (
+            <div style={{ marginTop: 20 }}>
+              <button className="btn" onClick={() => setEditMode(true)}>
+                Edit
+              </button>
+              <button className="btn" onClick={handleDelete} style={{ marginLeft: 10 }}>
+                Delete
+              </button>
+            </div>
+          )}
 
           {/* Comments Section */}
-          <div className="comments-section">
-  <h3>Comments</h3>
+          {!viewingVersion && (
+            <div className="comments-section">
+              <h3>Comments</h3>
 
-  <div className="comment-input">
-    <textarea
-      value={newComment}
-      onChange={(e) => setNewComment(e.target.value)}
-      placeholder="Write a comment..."
-    />
-    <button onClick={handleAddComment}>Add Comment</button>
-  </div>
+              <div className="comment-input">
+                <textarea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Write a comment..."
+                />
+                <button onClick={handleAddComment}>Add Comment</button>
+              </div>
 
-  <ul className="comments-list">
-    {article.Comments?.map((c) => (
-      <li key={c.id} className="comment-card">
-      <div className="comment-content">
-        {editingCommentId === c.id ? (
-          <div className="comment-edit-input">
-            <input
-              value={commentContent}
-              onChange={(e) => setCommentContent(e.target.value)}
-            />
-            <button onClick={() => handleUpdateComment(c.id)}>Save</button>
-            <button
-              onClick={() => {
-                setEditingCommentId(null);
-                setCommentContent("");
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <div className="comment-text">{c.content}</div>
-        )}
-        {/* Date at the bottom */}
-        <div className="comment-header">
-          {new Date(c.createdAt).toLocaleString()}
-        </div>
-      </div>
-    
-      {editingCommentId !== c.id && (
-        <div className="comment-actions">
-          <button className="edit" onClick={() => {
-            setEditingCommentId(c.id);
-            setCommentContent(c.content);
-          }}>
-            Edit
-          </button>
-          <button className="delete" onClick={() => handleDeleteComment(c.id)}>
-            Delete
-          </button>
-        </div>
-              )}
-            </li>
-            ))}
-          </ul>
-        </div>
+              <ul className="comments-list">
+                {article.Comments?.map((c) => (
+                  <li key={c.id} className="comment-card">
+                    <div className="comment-content">
+                      {editingCommentId === c.id ? (
+                        <div className="comment-edit-input">
+                          <input
+                            value={commentContent}
+                            onChange={(e) => setCommentContent(e.target.value)}
+                          />
+                          <button onClick={() => handleUpdateComment(c.id)}>Save</button>
+                          <button
+                            onClick={() => {
+                              setEditingCommentId(null);
+                              setCommentContent("");
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="comment-text">{c.content}</div>
+                      )}
+                      <div className="comment-header">
+                        {new Date(c.createdAt).toLocaleString()}
+                      </div>
+                    </div>
+
+                    {editingCommentId !== c.id && (
+                      <div className="comment-actions">
+                        <button
+                          className="edit"
+                          onClick={() => {
+                            setEditingCommentId(c.id);
+                            setCommentContent(c.content);
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button className="delete" onClick={() => handleDeleteComment(c.id)}>
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>

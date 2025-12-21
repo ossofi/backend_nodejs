@@ -12,6 +12,13 @@ export default (sequelize, DataTypes) => {
       foreignKey: "articleId",
       onDelete: "CASCADE",
     });
+
+    Article.hasMany(models.ArticleVersion, {
+      as: "Versions",
+      foreignKey: "articleId",
+      onDelete: "CASCADE"
+    });
+    
   };
 
   return Article;

@@ -227,4 +227,4 @@ defaultValue: DataTypes.UUIDV4
 
 ## ✅ Finished
 
-Backend is ready with UUID-based migrations, API routing, file uploads, and PostgreSQL setup.")
+Backend is ready with UUID-based migrations, API routing, file uploads, and PostgreSQL setup.

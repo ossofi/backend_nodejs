@@ -10,7 +10,7 @@ const handleRequest = async (request) => {
     if (err.response) {
       throw new Error(
         err.response.data?.error ||
-        `Request failed with status ${err.response.status}`
+          `Request failed with status ${err.response.status}`
       );
     } else if (err.request) {
       throw new Error("No response from server");
@@ -57,8 +57,14 @@ export const updateArticle = (id, data) => {
 
 export const deleteArticle = (id) => {
   if (!id) throw new Error("Article ID is required");
+  return handleRequest(() => axios.delete(`${API_BASE}/articles/${id}`));
+};
+
+/* article versions */
+export const getArticleVersions = (articleId) => {
+  if (!articleId) throw new Error("Article ID is required");
   return handleRequest(() =>
-    axios.delete(`${API_BASE}/articles/${id}`)
+    axios.get(`${API_BASE}/articles/${articleId}/versions`)
   );
 };
 
@@ -86,7 +92,6 @@ export const uploadAttachments = (articleId, formData) =>
     })
   );
 
-
 export default {
   getWorkspaces,
   createWorkspace,
@@ -95,6 +100,7 @@ export default {
   createArticle,
   updateArticle,
   deleteArticle,
+  getArticleVersions,
   postComment,
   updateComment,
   deleteComment,

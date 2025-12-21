@@ -1,6 +1,6 @@
 export default (sequelize, DataTypes) => {
   const Workspace = sequelize.define("Workspace", {
-    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    id: { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4 },
     name: { type: DataTypes.STRING, allowNull: false }
   });
 
