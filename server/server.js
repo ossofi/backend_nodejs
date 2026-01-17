@@ -4,6 +4,7 @@ import { createServer } from "http";
 import path from "path";
 import express from "express";
 import dotenv from "dotenv";
+
 import { initDB } from "./db.js";
 import createArticleRoutes from "./routes/articles.js";
 import createWorkspaceRoutes from "./routes/workspaces.js";
@@ -11,6 +12,7 @@ import requestLogger from "./middlewares/logger.js";
 import { initSocket } from "./sockets/index.js";
 import { ensureDirs } from "./utils/ensureDirs.js";
 import uploadRouter from "./routes/uploads.js";
+import authRoutes from "./routes/auth.js";
 
 dotenv.config();
 
@@ -32,7 +34,13 @@ const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 // Ensure folders exist
 ensureDirs(DATA_DIR, UPLOAD_DIR);
 
-// Serve uploaded files
+// Middleware
+app.use(cors({ origin: CLIENT_URL, credentials: true }));
+app.use(express.json());
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(requestLogger);
+
+// Static uploads
 app.use(
   "/uploads",
   express.static(UPLOAD_DIR, {
@@ -41,29 +49,28 @@ app.use(
   })
 );
 
-// Global middleware
-app.use(cors({ origin: CLIENT_URL, credentials: true }));
-app.use(express.json());
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(requestLogger);
+// Auth routes
+app.use("/api/auth", authRoutes);
 
-// Routes
+// Other routes
 app.use("/api", uploadRouter);
+
 const httpServer = createServer(app);
 const io = initSocket(httpServer, CLIENT_URL);
+
 app.use("/api/articles", createArticleRoutes(UPLOAD_DIR, io));
 app.use("/api/workspaces", createWorkspaceRoutes);
 
-// Default route
+// Health check
 app.get("/", (_req, res) => res.send("Article API is running"));
 
-// Global error handler
+// Error handler
 app.use((err, _req, res, _next) => {
   console.error("Server error:", err);
   res.status(500).json({ error: err.message || "Server error" });
 });
 
-// Start server
+// Start
 (async () => {
   await initDB();
   httpServer.listen(PORT, () =>

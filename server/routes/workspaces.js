@@ -1,8 +1,11 @@
 import express from "express";
 import db from "../models/index.js";
+import { authenticateJWT } from "../middlewares/auth.js";
+
+const router = express.Router();
+router.use(authenticateJWT); // protect all routes
 
 const { Workspace } = db;
-const router = express.Router();
 
 // GET all workspaces
 router.get("/", async (_req, res) => {

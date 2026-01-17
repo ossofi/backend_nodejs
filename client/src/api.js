@@ -1,6 +1,25 @@
 import axios from "axios";
 
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = "/api";
+
+// Axios instance with JWT interceptor
+
+const api = axios.create({
+  baseURL: API_BASE,
+});
+
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Shared request handler
 
 const handleRequest = async (request) => {
   try {
@@ -20,77 +39,114 @@ const handleRequest = async (request) => {
   }
 };
 
-/* workspaces */
+// Workspaces
+
 export const getWorkspaces = () =>
-  handleRequest(() => axios.get(`${API_BASE}/workspaces`));
+  handleRequest(() => api.get("/workspaces"));
 
-export const createWorkspace = (name) =>
-  handleRequest(() =>
-    axios.post(`${API_BASE}/workspaces`, { name: name.trim() })
+export const createWorkspace = (name) => {
+  if (!name?.trim()) throw new Error("Workspace name is required");
+  return handleRequest(() =>
+    api.post("/workspaces", { name: name.trim() })
   );
+};
 
-/* articles */
+// Articles
+
 export const getArticles = (workspaceId) => {
   if (!workspaceId) throw new Error("workspaceId is required");
   return handleRequest(() =>
-    axios.get(`${API_BASE}/articles`, { params: { workspaceId } })
+    api.get("/articles", { params: { workspaceId } })
   );
 };
 
 export const getArticle = (id) => {
   if (!id) throw new Error("Article ID is required");
-  return handleRequest(() => axios.get(`${API_BASE}/articles/${id}`));
+  return handleRequest(() => api.get(`/articles/${id}`));
 };
 
 export const createArticle = (data) => {
-  if (!data.workspaceId) throw new Error("workspaceId is required");
-  return handleRequest(() => axios.post(`${API_BASE}/articles`, data));
+  if (!data?.workspaceId) throw new Error("workspaceId is required");
+  return handleRequest(() => api.post("/articles", data));
 };
 
 export const updateArticle = (id, data) => {
   if (!id) throw new Error("Article ID is required");
-  if (!data.workspaceId) throw new Error("workspaceId is required");
+  if (!data?.workspaceId) throw new Error("workspaceId is required");
   return handleRequest(() =>
-    axios.put(`${API_BASE}/articles/${id}`, data)
+    api.put(`/articles/${id}`, data)
   );
 };
 
 export const deleteArticle = (id) => {
   if (!id) throw new Error("Article ID is required");
-  return handleRequest(() => axios.delete(`${API_BASE}/articles/${id}`));
+  return handleRequest(() =>
+    api.delete(`/articles/${id}`)
+  );
 };
 
-/* article versions */
+// Article Versions
+
 export const getArticleVersions = (articleId) => {
   if (!articleId) throw new Error("Article ID is required");
   return handleRequest(() =>
-    axios.get(`${API_BASE}/articles/${articleId}/versions`)
+    api.get(`/articles/${articleId}/versions`)
   );
 };
 
-/* comments */
-export const postComment = (articleId, content) =>
-  handleRequest(() =>
-    axios.post(`${API_BASE}/articles/${articleId}/comments`, { content })
-  );
+// Comments
 
-export const updateComment = (commentId, content) =>
-  handleRequest(() =>
-    axios.put(`${API_BASE}/articles/comments/${commentId}`, { content })
+export const postComment = (articleId, content) => {
+  if (!content?.trim()) throw new Error("Comment content is required");
+  return handleRequest(() =>
+    api.post(`/articles/${articleId}/comments`, { content })
   );
+};
 
-export const deleteComment = (commentId) =>
-  handleRequest(() =>
-    axios.delete(`${API_BASE}/articles/comments/${commentId}`)
+export const updateComment = (commentId, content) => {
+  if (!content?.trim()) throw new Error("Comment content is required");
+  return handleRequest(() =>
+    api.put(`/articles/comments/${commentId}`, { content })
   );
+};
 
-/* attachments */
-export const uploadAttachments = (articleId, formData) =>
-  handleRequest(() =>
-    axios.post(`${API_BASE}/articles/${articleId}/attachments`, formData, {
+export const deleteComment = (commentId) => {
+  if (!commentId) throw new Error("Comment ID is required");
+  return handleRequest(() =>
+    api.delete(`/articles/comments/${commentId}`)
+  );
+};
+
+
+// Attachments
+
+export const uploadAttachments = (articleId, formData) => {
+  if (!articleId) throw new Error("Article ID is required");
+  return handleRequest(() =>
+    api.post(`/articles/${articleId}/attachments`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     })
   );
+};
+
+
+// Authentication
+
+
+export const loginUser = (email, password) => {
+  if (!email || !password) throw new Error("Email and password are required");
+  return handleRequest(() =>
+    api.post("/auth/login", { email, password })
+  );
+};
+
+export const registerUser = (email, password) => {
+  if (!email || !password) throw new Error("Email and password are required");
+  return handleRequest(() =>
+    api.post("/auth/register", { email, password })
+  );
+};
+
 
 export default {
   getWorkspaces,
@@ -105,4 +161,6 @@ export default {
   updateComment,
   deleteComment,
   uploadAttachments,
+  loginUser,
+  registerUser,
 };

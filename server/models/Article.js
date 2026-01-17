@@ -3,12 +3,12 @@ export default (sequelize, DataTypes) => {
     id: { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4 },
     title: { type: DataTypes.STRING, allowNull: false },
     content: { type: DataTypes.TEXT },
-    workspaceId: { type: DataTypes.INTEGER, allowNull: true }
+    workspaceId: { type: DataTypes.UUID, allowNull: true }
   });
 
   Article.associate = (models) => {
     Article.hasMany(models.Comment, {
-      as: "Comments",
+      as: "comments",
       foreignKey: "articleId",
       onDelete: "CASCADE",
     });

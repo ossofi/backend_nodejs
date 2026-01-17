@@ -530,3 +530,54 @@ form button.btn-secondary:hover {
 .back-current-btn:active {
   transform: scale(0.98);
 }
+
+/* Auth form spacing improvements */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px; /* space between label/input blocks */
+}
+
+/* Space between label and input */
+.auth-form label {
+  margin-bottom: 6px;
+}
+
+/* Inputs spacing */
+.auth-form input {
+  margin-bottom: 10px;
+}
+
+/* Button spacing */
+.auth-form button {
+  margin-top: 10px;
+}
+
+/* Error message spacing */
+.error-message {
+  margin-bottom: 18px;
+}
+
+/* Space below title */
+.auth-card h2 {
+  margin-bottom: 25px;
+}
+
+/* Space above switch text */
+.auth-switch {
+  margin-top: 24px;
+}
+
+/* Logout button style */
+.btn-logout {
+  background-color: #6c3f7e;
+  color: white;
+}
+
+.btn-logout:hover {
+  background-color: #b877d2;
+}
+
+.header{
+  margin-left: 40px;
+}

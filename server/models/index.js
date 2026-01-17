@@ -4,16 +4,16 @@ import { fileURLToPath, pathToFileURL } from "url";
 import { DataTypes } from "sequelize";
 import { sequelize } from "../db.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const filename = fileURLToPath(import.meta.url);
+const dirname = path.dirname(filename);
 
 const db = { sequelize };
 
 // Dynamically load all models
-for (const file of fs.readdirSync(__dirname)) {
+for (const file of fs.readdirSync(dirname)) {
   if (file === "index.js" || !file.endsWith(".js")) continue;
 
-  const modelPath = path.join(__dirname, file);
+  const modelPath = path.join(dirname, file);
   const moduleURL = pathToFileURL(modelPath).href;
 
   const modelModule = await import(moduleURL);

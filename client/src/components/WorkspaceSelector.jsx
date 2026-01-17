@@ -50,6 +50,7 @@ export default function WorkspaceSelector({ value, onChange }) {
   };
 
   return (
+    <div className="workspace-selector-container">
     <select value={value} onChange={handleChange} disabled={loading}>
       <option value="">Select workspace</option>
       {workspaces.map((ws) => (
@@ -58,5 +59,6 @@ export default function WorkspaceSelector({ value, onChange }) {
       <option disabled>──────────</option>
       <option value={ADD_VALUE}>➕ Add workspace…</option>
     </select>
+    </div>
   );
 }

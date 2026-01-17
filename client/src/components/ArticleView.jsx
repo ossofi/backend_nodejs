@@ -117,7 +117,7 @@ export default function ArticleView() {
       const data = await addComment(id, newComment);
       setArticle((prev) => ({
         ...prev,
-        Comments: [...(prev.Comments || []), data],
+        comments: [...(prev.comments || []), data],
       }));
       setNewComment("");
     } catch (err) {
@@ -300,7 +300,7 @@ export default function ArticleView() {
               </div>
 
               <ul className="comments-list">
-                {article.Comments?.map((c) => (
+                {article.comments?.map((c) => (
                   <li key={c.id} className="comment-card">
                     <div className="comment-content">
                       {editingCommentId === c.id ? (
