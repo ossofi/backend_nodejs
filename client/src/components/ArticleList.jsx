@@ -2,12 +2,15 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getArticles } from "../api.js";
 import WorkspaceSelector from "./WorkspaceSelector";
+import { getUserFromToken } from "../utils/auth";
 
 export default function ArticleList() {
   const [articles, setArticles] = useState([]);
   const [workspaceId, setWorkspaceId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const user = getUserFromToken(); // { id, email, role }
 
   useEffect(() => {
     const fetchArticles = async () => {
@@ -39,14 +42,19 @@ export default function ArticleList() {
       {!loading && !error && articles.length === 0 && <p>No articles found.</p>}
 
       <ul>
-        {articles.map((a) => (
-          <li key={a.id} className="article-item">
-            <Link to={`/article/${a.id}`} className="article-link">{a.title}</Link>
-            <div className="article-actions">
-              <Link to={`/edit/${a.id}`} className="btn btn-secondary">Edit</Link>
-            </div>
-          </li>
-        ))}
+        {articles.map((a) => {
+          const canEditOrDelete = user && (user.role === "admin" || user.id === a.createdBy);
+          return (
+            <li key={a.id} className="article-item">
+              <Link to={`/article/${a.id}`} className="article-link">{a.title}</Link>
+              {canEditOrDelete && (
+                <div className="article-actions">
+                  <Link to={`/edit/${a.id}`} className="btn btn-secondary">Edit</Link>
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ul>
 
       <Link to="/new" style={{ display: "inline-block", marginTop: 20 }}>

@@ -14,6 +14,7 @@ import {
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import WorkspaceSelector from "./WorkspaceSelector";
+import { getUserFromToken } from "../utils/auth";
 
 const SERVER_URL = "http://localhost:3000";
 const addComment = postComment;
@@ -39,11 +40,11 @@ export default function ArticleView() {
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [commentContent, setCommentContent] = useState("");
 
-  // Versions
   const [versions, setVersions] = useState([]);
   const [viewingVersion, setViewingVersion] = useState(null);
 
-  // Fetch article + workspaces + versions
+  const user = getUserFromToken(); // logged-in user
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -69,6 +70,8 @@ export default function ArticleView() {
     };
     fetchData();
   }, [id]);
+
+  const canEditOrDelete = user && (user.role === "admin" || user.id === article?.createdBy);
 
   const handleFilesChange = (e) => setFiles(Array.from(e.target.files));
 
@@ -156,11 +159,8 @@ export default function ArticleView() {
   if (error) return <p style={{ color: "red" }}>{error}</p>;
   if (!article) return <p>Article not found</p>;
 
-  // Use either current article or viewingVersion
   const displayTitle = viewingVersion ? viewingVersion.title : title;
   const displayContent = viewingVersion ? viewingVersion.content : content;
-
-  // Find workspace name by ID
   const workspaceName = workspaces.find((w) => w.id === article.workspaceId)?.name || "Unknown";
 
   return (
@@ -169,7 +169,6 @@ export default function ArticleView() {
         ← Back to Articles
       </button>
 
-      {/* Workspace */}
       <div style={{ marginBottom: 20 }}>
         {editMode && !viewingVersion ? (
           <>
@@ -200,7 +199,6 @@ export default function ArticleView() {
               </li>
             ))}
           </ul>
-
           {viewingVersion && (
             <button onClick={() => setViewingVersion(null)} className="back-current-btn">
               Back to current version
@@ -209,7 +207,7 @@ export default function ArticleView() {
         </div>
       )}
 
-      {editMode && !viewingVersion ? (
+      {editMode && !viewingVersion && canEditOrDelete ? (
         <div>
           <input
             value={title}
@@ -225,7 +223,7 @@ export default function ArticleView() {
             name="attachments"
             multiple
             accept=".jpg,.jpeg,.png,.gif,.webp,.pdf"
-            onChange={handleFilesChange}
+            onChange={(e) => setFiles(Array.from(e.target.files))}
           />
           {files.length > 0 && (
             <ul>
@@ -235,12 +233,8 @@ export default function ArticleView() {
             </ul>
           )}
 
-          <button onClick={handleSave} disabled={saving}>
-            Save
-          </button>
-          <button onClick={() => setEditMode(false)} disabled={saving}>
-            Cancel
-          </button>
+          <button onClick={handleSave} disabled={saving}>Save</button>
+          <button onClick={() => setEditMode(false)} disabled={saving}>Cancel</button>
         </div>
       ) : (
         <div>
@@ -257,15 +251,9 @@ export default function ArticleView() {
                   return (
                     <li key={a.id}>
                       {isImage ? (
-                        <img
-                          src={fileUrl}
-                          alt={a.originalName}
-                          style={{ maxWidth: "300px", display: "block", marginBottom: 10 }}
-                        />
+                        <img src={fileUrl} alt={a.originalName} style={{ maxWidth: 300, display: "block", marginBottom: 10 }} />
                       ) : (
-                        <a href={fileUrl} target="_blank" rel="noopener noreferrer">
-                          {a.originalName}
-                        </a>
+                        <a href={fileUrl} target="_blank" rel="noopener noreferrer">{a.originalName}</a>
                       )}
                     </li>
                   );
@@ -274,14 +262,10 @@ export default function ArticleView() {
             </div>
           )}
 
-          {!viewingVersion && (
+          {!viewingVersion && canEditOrDelete && (
             <div style={{ marginTop: 20 }}>
-              <button className="btn" onClick={() => setEditMode(true)}>
-                Edit
-              </button>
-              <button className="btn" onClick={handleDelete} style={{ marginLeft: 10 }}>
-                Delete
-              </button>
+              <button className="btn" onClick={() => setEditMode(true)}>Edit</button>
+              <button className="btn" onClick={handleDelete} style={{ marginLeft: 10 }}>Delete</button>
             </div>
           )}
 

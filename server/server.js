@@ -13,6 +13,7 @@ import { initSocket } from "./sockets/index.js";
 import { ensureDirs } from "./utils/ensureDirs.js";
 import uploadRouter from "./routes/uploads.js";
 import authRoutes from "./routes/auth.js";
+import userRoutes from "./routes/users.js";
 
 dotenv.config();
 
@@ -69,6 +70,8 @@ app.use((err, _req, res, _next) => {
   console.error("Server error:", err);
   res.status(500).json({ error: err.message || "Server error" });
 });
+
+app.use("/api/users", userRoutes);
 
 // Start
 (async () => {

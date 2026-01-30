@@ -188,6 +188,60 @@ POST /api/comments
 }
 ```
 
+### User Management & Role-Based Access Control (RBAC)
+
+#### Admin User
+
+To test role-based features, you need an admin user. You can create one via frontend or Postman:
+
+```
+POST /api/auth/register
+{
+"email": "admin@gmail.com",
+"password": "123456",
+"role": "admin"
+}
+```
+
+Once created, log in and use the returned token to access admin-only endpoints.
+
+#### Admin API Endpoints
+
+* Get all users: `GET /api/users` (admin only)
+* Update user role: `PUT /api/users/:id/role` with JSON body `{ "role": "admin" }` or `{ "role": "user" }`
+
+> Regular users cannot access these endpoints; backend enforces permissions.
+
+#### Article Edit Permissions
+
+* Only article creator OR admin can edit an article.
+* Unauthorized attempts return 403 Forbidden.
+
+#### Frontend User Management Page
+* Accessible only by admin (/admin/users)
+* Admin can:
+  * View a list of all users
+  * Change user roles via dropdown
+* Regular users cannot see or access this page.
+Example frontend visibility:
+``` js
+{user.role === "admin" && (
+  <Link to="/admin/users">User Management</Link>
+)}
+```
+Example route protection:
+
+```js
+<Route
+  path="/admin/users"
+  element={
+    <AdminRoute>
+      <UserManagement />
+    </AdminRoute>
+  }
+/>
+```
+
 ---
 
 ## File Uploads
@@ -222,7 +276,7 @@ defaultValue: DataTypes.UUIDV4
 
 * If migrations fail, delete `node_modules` and reinstall.
 * Avoid committing passwords; always use `.env`.
-
+* RBAC issues: check token, role in localStorage, and frontend route protection.
 ---
 
 ## ✅ Finished

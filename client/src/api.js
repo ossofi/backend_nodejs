@@ -147,6 +147,21 @@ export const registerUser = (email, password) => {
   );
 };
 
+// Users (Admin only)
+
+export const getUsers = () =>
+  handleRequest(() => api.get("/users"));
+
+export const updateUserRole = (id, role) => {
+  if (!id) throw new Error("User ID is required");
+  if (!["admin", "user"].includes(role)) {
+    throw new Error("Invalid role");
+  }
+
+  return handleRequest(() =>
+    api.put(`/users/${id}/role`, { role })
+  );
+};
 
 export default {
   getWorkspaces,
@@ -163,4 +178,6 @@ export default {
   uploadAttachments,
   loginUser,
   registerUser,
+  getUsers,
+  updateUserRole,
 };

@@ -3,7 +3,8 @@ export default (sequelize, DataTypes) => {
     id: { type: DataTypes.UUID, primaryKey: true, defaultValue: DataTypes.UUIDV4 },
     title: { type: DataTypes.STRING, allowNull: false },
     content: { type: DataTypes.TEXT },
-    workspaceId: { type: DataTypes.UUID, allowNull: true }
+    workspaceId: { type: DataTypes.UUID, allowNull: true },
+    createdBy: { type: DataTypes.UUID, allowNull: false }
   });
 
   Article.associate = (models) => {
@@ -19,6 +20,10 @@ export default (sequelize, DataTypes) => {
       onDelete: "CASCADE"
     });
     
+    Article.belongsTo(models.User, {
+      foreignKey: "createdBy",
+      as: "author",
+    });
   };
 
   return Article;

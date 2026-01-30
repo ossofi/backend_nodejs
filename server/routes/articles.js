@@ -5,6 +5,7 @@ import path from "path";
 import fs from "fs";
 import db from "../models/index.js";
 import { authenticateJWT } from "../middlewares/auth.js";
+import authorizeArticleEdit from "../middlewares/authorizeArticleEdit.js";
 
 const { Article, Comment, ArticleVersion } = db;
 
@@ -53,8 +54,10 @@ export default function createArticleRoutes(UPLOAD_DIR, io) {
     );
   };
 
+  // Standard UUID v4 validation (works for your Sequelize UUID primary keys)
   const validateUUID = (id) =>
-    /^[0-9a-fA-F-]{36}$/.test(id);
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+
 
   // GET articles by workspace
 
@@ -120,12 +123,12 @@ export default function createArticleRoutes(UPLOAD_DIR, io) {
         return res.status(400).json({ error: "Missing fields" });
       }
 
-      // Future authorization
-      // if (workspaceId !== req.user.workspaceId) {
-      //   return res.status(403).json({ error: "Forbidden" });
-      // }
-
-      const article = await Article.create({ title, content, workspaceId });
+      const article = await Article.create({
+        title,
+        content,
+        workspaceId,
+        createdBy: req.user.id, // author save
+      });
 
       io?.emit("notification", {
         type: "created",
@@ -140,13 +143,15 @@ export default function createArticleRoutes(UPLOAD_DIR, io) {
     }
   });
 
-  // UPDATE article (versioned)
+  // UPDATE article (RBAC)
 
-  router.put("/:id", async (req, res) => {
+  router.put("/:id", authenticateJWT, authorizeArticleEdit, async (req, res) => {
     const { id } = req.params;
+    const article = req.article; // already authorized
+  
     if (!validateUUID(id)) {
       return res.status(400).json({ error: "Invalid article ID" });
-    }
+    }  
 
     try {
       const article = await Article.findByPk(id, {
@@ -157,10 +162,13 @@ export default function createArticleRoutes(UPLOAD_DIR, io) {
         return res.status(404).json({ error: "Article not found" });
       }
 
-      // Future authorization
-      // if (article.workspaceId !== req.user.workspaceId) {
-      //   return res.status(403).json({ error: "Forbidden" });
-      // }
+      // RBAC: only creator OR admin
+      if (
+        article.createdBy !== req.user.id &&
+        req.user.role !== "admin"
+      ) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
 
       const versionNumber = (article.Versions?.length || 0) + 1;
 
@@ -198,17 +206,16 @@ export default function createArticleRoutes(UPLOAD_DIR, io) {
           "title",
           "content",
           "versionNumber",
-          "createdAt"
+          "createdAt",
         ],
       });
-  
+
       res.json({ data: versions });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Server error" });
     }
   });
-  
 
   // DELETE article
 
@@ -223,11 +230,6 @@ export default function createArticleRoutes(UPLOAD_DIR, io) {
       if (!article) {
         return res.status(404).json({ error: "Article not found" });
       }
-
-      // Future authorization
-      // if (article.workspaceId !== req.user.workspaceId) {
-      //   return res.status(403).json({ error: "Forbidden" });
-      // }
 
       const metadataFile = attachmentsFileFor(id);
       if (fs.existsSync(metadataFile)) {
@@ -280,36 +282,42 @@ export default function createArticleRoutes(UPLOAD_DIR, io) {
 
   // ATTACHMENTS
 
-  router.post("/:id/attachments", upload.array("attachments", 5), async (req, res) => {
-    const { id } = req.params;
-    if (!validateUUID(id)) {
-      return res.status(400).json({ error: "Invalid article ID" });
+  router.post(
+    "/:id/attachments",
+    upload.array("attachments", 5),
+    async (req, res) => {
+      const { id } = req.params;
+      if (!validateUUID(id)) {
+        return res.status(400).json({ error: "Invalid article ID" });
+      }
+
+      const article = await Article.findByPk(id);
+      if (!article) {
+        return res.status(404).json({ error: "Article not found" });
+      }
+
+      const existing = readAttachmentsFor(id);
+
+      const attachments = req.files.map((file) => ({
+        id: uuidv4(),
+        originalName: file.originalname,
+        filename: file.filename,
+        mimeType: file.mimetype,
+        url: `/uploads/${file.filename}`,
+        createdAt: new Date().toISOString(),
+      }));
+
+      writeAttachmentsFor(id, [...existing, ...attachments]);
+
+      io?.emit("notification", {
+        type: "attachment",
+        articleId: id,
+        count: attachments.length,
+      });
+
+      res.status(201).json({ data: attachments });
     }
-
-    const article = await Article.findByPk(id);
-    if (!article) return res.status(404).json({ error: "Article not found" });
-
-    const existing = readAttachmentsFor(id);
-
-    const attachments = req.files.map((file) => ({
-      id: uuidv4(),
-      originalName: file.originalname,
-      filename: file.filename,
-      mimeType: file.mimetype,
-      url: `/uploads/${file.filename}`,
-      createdAt: new Date().toISOString(),
-    }));
-
-    writeAttachmentsFor(id, [...existing, ...attachments]);
-
-    io?.emit("notification", {
-      type: "attachment",
-      articleId: id,
-      count: attachments.length,
-    });
-
-    res.status(201).json({ data: attachments });
-  });
+  );
 
   return router;
 }

@@ -14,10 +14,16 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import LogoutButton from "./components/LogoutButton";
 import { initNotifications, onNotification } from "./notifications";
 import "./App.css";
+import AdminRoute from "./components/AdminRoute";
+import UserManagement from "./pages/UserManagement";
+import { Link } from "react-router-dom";
+import { getUserFromToken } from "./utils/auth";
+import AdminButton from "./components/AdminButton";
 
 export default function App() {
   const [notifications, setNotifications] = useState([]);
   const [token, setToken] = useState(localStorage.getItem("token"));
+  const user = getUserFromToken();
 
   // Notifications
   useEffect(() => {
@@ -44,9 +50,12 @@ export default function App() {
       {/* Header */}
       {token && (
         <div className="header">
+          <AdminButton />
           <LogoutButton onLogout={() => setToken(null)} />
         </div>
       )}
+
+
 
       {/* Notifications */}
       <div className="notifications-container">
@@ -55,8 +64,8 @@ export default function App() {
             {n.type === "attachment"
               ? `New attachment on "${n.title}"`
               : n.type === "edited"
-              ? `"${n.title}" edited`
-              : `"${n.title}" created`}
+                ? `"${n.title}" edited`
+                : `"${n.title}" created`}
           </div>
         ))}
       </div>
@@ -111,6 +120,14 @@ export default function App() {
         <Route
           path="*"
           element={<Navigate to={token ? "/" : "/login"} replace />}
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <AdminRoute>
+              <UserManagement />
+            </AdminRoute>
+          }
         />
       </Routes>
     </Router>
