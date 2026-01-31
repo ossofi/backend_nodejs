@@ -163,6 +163,19 @@ export const updateUserRole = (id, role) => {
   );
 };
 
+// Search articles by title or content within a workspace
+
+export const searchArticles = (workspaceId, query) => {
+  if (!workspaceId) throw new Error("workspaceId is required");
+  if (!query?.trim()) return getArticles(workspaceId); // fallback to all articles
+
+  return handleRequest(() =>
+    api.get("/articles/search", {
+      params: { workspaceId, q: query.trim() },
+    })
+  );
+};
+
 export default {
   getWorkspaces,
   createWorkspace,
@@ -180,4 +193,5 @@ export default {
   registerUser,
   getUsers,
   updateUserRole,
+  searchArticles,
 };

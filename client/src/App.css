@@ -602,7 +602,7 @@ form button.btn-secondary:hover {
   max-width: 900px;
   margin: 60px auto;
   padding: 30px;
-  background: #faf7fb;
+  background: #fff;
   border-radius: 16px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
 }
@@ -674,4 +674,19 @@ form button.btn-secondary:hover {
   outline: none;
   border-color: #6c3f7e;
   box-shadow: 0 0 0 2px rgba(108, 63, 126, 0.2);
+}
+
+.btn-submit {
+  background-color: #5e7f9b;
+  height: 42px;
+  color: white;
+}
+
+.search-form{
+  display: flex;
+}
+
+form input.search-input{
+  padding: 8px;
+  margin-bottom: 2px;
 }

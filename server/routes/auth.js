@@ -19,7 +19,8 @@ router.post("/register", async (req, res) => {
 
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRATION });
 
-    res.status(201).json({ data: { id: user.id, email: user.email, role: user.role }, token });
+    // Remove token creation for registration
+    res.status(201).json({ data: { id: user.id, email: user.email, role: user.role } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });

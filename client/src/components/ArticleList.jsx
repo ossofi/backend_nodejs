@@ -1,48 +1,85 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getArticles } from "../api.js";
+import { getArticles, searchArticles, getWorkspaces } from "../api.js";
 import WorkspaceSelector from "./WorkspaceSelector";
 import { getUserFromToken } from "../utils/auth";
+import SearchBar from "./SearchBar";
 
 export default function ArticleList() {
   const [articles, setArticles] = useState([]);
   const [workspaceId, setWorkspaceId] = useState("");
+  const [workspaces, setWorkspaces] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const user = getUserFromToken(); // { id, email, role }
 
+  // Load workspaces & auto-select first
   useEffect(() => {
-    const fetchArticles = async () => {
-      if (!workspaceId) return;
-      setLoading(true);
-      setError(null);
+    const loadWorkspaces = async () => {
       try {
-        const data = await getArticles(workspaceId);
-        setArticles(data);
+        const res = await getWorkspaces();
+        setWorkspaces(res.data || []);
+        if (res.data && res.data.length > 0 && !workspaceId) {
+          setWorkspaceId(res.data[0].id);
+        }
       } catch (err) {
         console.error(err);
-        setError(err.message || "Failed to load articles");
-      } finally {
-        setLoading(false);
       }
     };
-    fetchArticles();
+    loadWorkspaces();
+  }, []);
+
+  // Unified function for fetching articles
+  const loadArticles = async (query = "") => {
+    if (!workspaceId) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = query.trim()
+        ? await searchArticles(workspaceId, query)
+        : await getArticles(workspaceId);
+
+      const articlesArray = Array.isArray(res) ? res : res?.data || [];
+
+      setArticles(
+        articlesArray.map(a => ({
+          id: a.id,
+          title: a.title,
+          createdBy: a.createdBy,
+          workspaceId: a.workspaceId,
+        }))
+      );
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Failed to load articles");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch articles when workspace changes
+  useEffect(() => {
+    if (workspaceId) loadArticles();
   }, [workspaceId]);
 
   return (
     <div className="container">
       <h2>Articles</h2>
 
-      {/* workspace dropdown */}
       <WorkspaceSelector value={workspaceId} onChange={setWorkspaceId} />
+
+      <SearchBar onSearch={(q) => loadArticles(q)} />
 
       {loading && <p>Loading...</p>}
       {error && <p style={{ color: "red" }}>{error}</p>}
       {!loading && !error && articles.length === 0 && <p>No articles found.</p>}
 
       <ul>
-        {articles.map((a) => {
+        {articles.map(a => {
+          if (!a.id) return null;
           const canEditOrDelete = user && (user.role === "admin" || user.id === a.createdBy);
           return (
             <li key={a.id} className="article-item">
