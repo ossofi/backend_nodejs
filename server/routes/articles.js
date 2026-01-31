@@ -7,8 +7,10 @@ import db from "../models/index.js";
 import { authenticateJWT } from "../middlewares/auth.js";
 import authorizeArticleEdit from "../middlewares/authorizeArticleEdit.js";
 import { Sequelize, Op } from "sequelize";
+import PDFDocument from "pdfkit";
+import striptags from "striptags";
 
-const { Article, Comment, ArticleVersion } = db;
+const { Article, User, Comment, Workspace, ArticleVersion } = db;
 
 export default function createArticleRoutes(UPLOAD_DIR, io) {
   const router = express.Router();
@@ -57,7 +59,7 @@ export default function createArticleRoutes(UPLOAD_DIR, io) {
 
   // Standard UUID v4 validation (works for your Sequelize UUID primary keys)
   const validateUUID = (id) =>
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);  
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
   // GET articles by workspace
 
@@ -86,39 +88,39 @@ export default function createArticleRoutes(UPLOAD_DIR, io) {
   });
 
   // SEARCH
-router.get("/search", async (req, res) => {
-  try {
-    const { workspaceId, q } = req.query;
+  router.get("/search", async (req, res) => {
+    try {
+      const { workspaceId, q } = req.query;
 
-    if (!workspaceId) {
-      return res.status(400).json({ error: "workspaceId required" });
+      if (!workspaceId) {
+        return res.status(400).json({ error: "workspaceId required" });
+      }
+      if (!q?.trim()) {
+        return res.status(400).json({ error: "Search query required" });
+      }
+
+      const articles = await Article.findAll({
+        where: {
+          workspaceId,
+          [Op.or]: [
+            { title: { [Op.iLike]: `%${q}%` } },
+            { content: { [Op.iLike]: `%${q}%` } },
+          ],
+        },
+        order: [["createdAt", "DESC"]],
+      });
+
+      res.json({
+        data: articles.map(a => ({
+          ...a.toJSON(),
+          attachments: readAttachmentsFor(a.id),
+        })),
+      });
+    } catch (err) {
+      console.error("Search error:", err);
+      res.status(500).json({ error: "Server error" });
     }
-    if (!q?.trim()) {
-      return res.status(400).json({ error: "Search query required" });
-    }
-
-    const articles = await Article.findAll({
-      where: {
-        workspaceId,
-        [Op.or]: [
-          { title: { [Op.iLike]: `%${q}%` } },
-          { content: { [Op.iLike]: `%${q}%` } },
-        ],
-      },
-      order: [["createdAt", "DESC"]],
-    });
-
-    res.json({
-      data: articles.map(a => ({
-        ...a.toJSON(),
-        attachments: readAttachmentsFor(a.id),
-      })),
-    });
-  } catch (err) {
-    console.error("Search error:", err);
-    res.status(500).json({ error: "Server error" });
-  }
-});
+  });
 
   // GET single article
 
@@ -181,44 +183,44 @@ router.get("/search", async (req, res) => {
   router.put("/:id", authenticateJWT, authorizeArticleEdit, async (req, res) => {
     const { id } = req.params;
     const article = req.article; // already authorized by middleware
-  
+
     if (!validateUUID(id)) {
       return res.status(400).json({ error: "Invalid article ID" });
     }
-  
+
     try {
       // Fetch Versions only to calculate version number
       const articleWithVersions = await Article.findByPk(id, {
         include: [{ model: ArticleVersion, as: "Versions" }],
       });
-  
+
       if (!articleWithVersions) {
         return res.status(404).json({ error: "Article not found" });
       }
-  
+
       const versionNumber = (articleWithVersions.Versions?.length || 0) + 1;
-  
+
       await ArticleVersion.create({
         articleId: article.id,
         title: article.title,
         content: article.content,
         versionNumber,
       });
-  
+
       await article.update(req.body);
-  
+
       io?.emit("notification", {
         type: "edited",
         title: article.title,
         articleId: article.id,
       });
-  
+
       res.json({ data: article });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Server error" });
     }
-  });  
+  });
 
   // GET article versions
 
@@ -242,6 +244,52 @@ router.get("/search", async (req, res) => {
       res.status(500).json({ error: "Server error" });
     }
   });
+
+  // PDF export route
+  router.get("/:id/export", async (req, res) => {
+    const { id } = req.params;
+
+    // UUID validation
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return res.status(400).json({ error: "Invalid article ID" });
+    }
+
+    try {
+      const article = await db.Article.findByPk(id, {
+        include: [{ model: db.User, as: "author", attributes: ["email"] }],
+      });
+
+      if (!article) return res.status(404).json({ error: "Article not found" });
+
+      // PDF headers
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${article.title}.pdf"`
+      );
+
+      const doc = new PDFDocument({ margin: 50 });
+      doc.pipe(res);
+
+      // Title & metadata
+      doc.fontSize(22).text(article.title, { underline: true });
+      doc.moveDown();
+      doc.fontSize(10).text(`Author: ${article.author?.email || "Unknown"}`);
+      doc.text(`Created At: ${article.createdAt.toDateString()}`);
+      doc.moveDown();
+
+      // Convert HTML content to plain text
+      const contentText = striptags(article.content, [], "\n");
+      doc.fontSize(12).text(contentText, { lineGap: 4 });
+      doc.moveDown();
+
+      doc.end();
+    } catch (err) {
+      console.error("PDF export error:", err);
+      res.status(500).json({ error: "Failed to generate PDF" });
+    }
+  });
+
 
   // DELETE article
 

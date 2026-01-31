@@ -14,10 +14,9 @@ import {
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import WorkspaceSelector from "./WorkspaceSelector";
-import { getUserFromToken } from "../utils/auth";
+import { getUserFromToken, getToken } from "../utils/auth";
 
 const SERVER_URL = "http://localhost:3000";
-const addComment = postComment;
 
 export default function ArticleView() {
   const { id } = useParams();
@@ -155,6 +154,41 @@ export default function ArticleView() {
     }
   };
 
+  const handleExportPDF = async () => {
+    const token = getToken();
+    if (!token) {
+      alert("You must be logged in to export PDF");
+      return;
+    }
+
+    try {
+      console.log("Export token:", token); // Debug
+      const response = await fetch(`${SERVER_URL}/api/articles/${id}/export`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to export PDF");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${article.title}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (err) {
+      alert(err.message);
+      console.error(err);
+    }
+  };
+
   if (loading) return <p>Loading...</p>;
   if (error) return <p style={{ color: "red" }}>{error}</p>;
   if (!article) return <p>Article not found</p>;
@@ -251,9 +285,15 @@ export default function ArticleView() {
                   return (
                     <li key={a.id}>
                       {isImage ? (
-                        <img src={fileUrl} alt={a.originalName} style={{ maxWidth: 300, display: "block", marginBottom: 10 }} />
+                        <img
+                          src={fileUrl}
+                          alt={a.originalName}
+                          style={{ maxWidth: 300, display: "block", marginBottom: 10 }}
+                        />
                       ) : (
-                        <a href={fileUrl} target="_blank" rel="noopener noreferrer">{a.originalName}</a>
+                        <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+                          {a.originalName}
+                        </a>
                       )}
                     </li>
                   );
@@ -262,12 +302,22 @@ export default function ArticleView() {
             </div>
           )}
 
-          {!viewingVersion && canEditOrDelete && (
-            <div style={{ marginTop: 20 }}>
-              <button className="btn" onClick={() => setEditMode(true)}>Edit</button>
-              <button className="btn" onClick={handleDelete} style={{ marginLeft: 10 }}>Delete</button>
-            </div>
-          )}
+          <div style={{ marginTop: 20 }}>
+            {/* Only show Edit/Delete to admin or creator */}
+            {!viewingVersion && canEditOrDelete && (
+              <>
+                <button className="btn" onClick={() => setEditMode(true)}>Edit</button>
+                <button className="btn" onClick={handleDelete} style={{ marginLeft: 10 }}>Delete</button>
+              </>
+            )}
+
+            {/* Show Export button to any logged-in user */}
+            {user && (
+              <button className="btn" onClick={handleExportPDF} style={{ marginLeft: canEditOrDelete ? 10 : 0 }}>
+                Export as PDF
+              </button>
+            )}
+          </div>
 
           {/* Comments Section */}
           {!viewingVersion && (
@@ -333,7 +383,8 @@ export default function ArticleView() {
             </div>
           )}
         </div>
+
       )}
     </div>
-  );
+  )
 }

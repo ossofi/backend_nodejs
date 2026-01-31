@@ -123,9 +123,7 @@ export const deleteComment = (commentId) => {
 export const uploadAttachments = (articleId, formData) => {
   if (!articleId) throw new Error("Article ID is required");
   return handleRequest(() =>
-    api.post(`/articles/${articleId}/attachments`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    })
+    api.post(`/articles/${articleId}/attachments`, formData)
   );
 };
 

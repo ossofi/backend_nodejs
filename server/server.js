@@ -4,7 +4,6 @@ import { createServer } from "http";
 import path from "path";
 import express from "express";
 import dotenv from "dotenv";
-
 import { initDB } from "./db.js";
 import createArticleRoutes from "./routes/articles.js";
 import createWorkspaceRoutes from "./routes/workspaces.js";
@@ -14,7 +13,6 @@ import { ensureDirs } from "./utils/ensureDirs.js";
 import uploadRouter from "./routes/uploads.js";
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
-
 dotenv.config();
 
 const app = express();
